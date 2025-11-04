@@ -213,6 +213,80 @@ class SaleRepViewModel @Inject constructor(
         }
     }
 
+    fun updateSaleRep(
+        id: Int,
+        name: String,
+        email: String,
+        password: String?,
+        passwordConfirmation: String?,
+        phone: String?,
+        region: String?,
+        profilePicture: String?,
+        isActive: Boolean
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            val request = UpdateSaleRepRequest(
+                name = name,
+                email = email,
+                password = password,
+                passwordConfirmation = passwordConfirmation,
+                phone = phone,
+                region = region,
+                profilePicture = profilePicture,
+                isActive = if (isActive) 1 else 0
+            )
+
+            if (networkUtils.isNetworkAvailable()) {
+                try {
+                    val response = apiService.updateSaleRep(id, request)
+                    if (response.isSuccessful) {
+                        response.body()?.saleRep?.let { saleRepDto ->
+                            saleRepDao.insertSaleRep(saleRepDto.toEntity())
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    successMessage = "Sales Rep updated successfully"
+                                )
+                            }
+                            loadSaleReps()
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = response.message() ?: "Failed to update sales rep"
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.message ?: "An error occurred"
+                        )
+                    }
+                }
+            } else {
+                val syncItem = SyncQueueEntity(
+                    entityType = "sale_rep",
+                    entityId = id.toString(),
+                    operation = "UPDATE",
+                    jsonData = gson.toJson(request),
+                    timestamp = System.currentTimeMillis()
+                )
+                syncQueueDao.insertSyncItem(syncItem)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Offline: Sales Rep will be updated when online"
+                    )
+                }
+            }
+        }
+    }
+
     fun deleteSaleRep(id: Int) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }

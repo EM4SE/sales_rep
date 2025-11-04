@@ -25,6 +25,20 @@ fun SaleRepListScreen(
     viewModel: SaleRepViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Filter sale reps based on search query
+    val filteredSaleReps = remember(uiState.saleReps, searchQuery) {
+        if (searchQuery.isBlank()) {
+            uiState.saleReps
+        } else {
+            uiState.saleReps.filter { saleRep ->
+                saleRep.name.contains(searchQuery, ignoreCase = true) ||
+                        saleRep.email.contains(searchQuery, ignoreCase = true) ||
+                        saleRep.region?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -48,34 +62,67 @@ fun SaleRepListScreen(
             }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            when {
-                uiState.isLoading && uiState.saleReps.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search by name, email or region...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
                     }
-                }
-                uiState.saleReps.isEmpty() -> {
-                    EmptyState("No sales reps found.\nTap + to add a sales rep.")
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(uiState.saleReps) { saleRep ->
-                            SaleRepCard(
-                                saleRep = saleRep,
-                                onClick = { onNavigateToDetail(saleRep.id) }
-                            )
+                },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
+            )
+
+            // Content
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading && uiState.saleReps.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    filteredSaleReps.isEmpty() -> {
+                        EmptyState(
+                            if (searchQuery.isNotEmpty())
+                                "No sales reps found matching \"$searchQuery\""
+                            else
+                                "No sales reps found.\nTap + to add a sales rep."
+                        )
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredSaleReps, key = { it.id }) { saleRep ->
+                                SaleRepCard(
+                                    saleRep = saleRep,
+                                    onClick = { onNavigateToDetail(saleRep.id) }
+                                )
+                            }
                         }
                     }
                 }

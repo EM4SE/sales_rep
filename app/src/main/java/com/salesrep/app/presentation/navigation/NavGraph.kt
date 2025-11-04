@@ -344,7 +344,7 @@ fun NavGraph(
             )
         }
 
-        // Sale Reps
+// Sale Reps
         composable(Screen.SaleRepList.route) {
             SaleRepListScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -352,7 +352,7 @@ fun NavGraph(
                     navController.navigate(Screen.SaleRepDetail.createRoute(saleRepId))
                 },
                 onNavigateToAdd = {
-                    navController.navigate("salereps/form")
+                    navController.navigate(Screen.SaleRepForm.createRoute())
                 }
             )
         }
@@ -364,12 +364,23 @@ fun NavGraph(
             val saleRepId = backStackEntry.arguments?.getInt("saleRepId") ?: 0
             SaleRepDetailScreen(
                 saleRepId = saleRepId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { id ->
+                    navController.navigate(Screen.SaleRepForm.createRoute(id))
+                }
             )
         }
 
-        composable("salereps/form") {
+        composable(
+            route = Screen.SaleRepForm.route,
+            arguments = listOf(navArgument("saleRepId") {
+                type = NavType.IntType
+                defaultValue = -1
+            })
+        ) { backStackEntry ->
+            val saleRepId = backStackEntry.arguments?.getInt("saleRepId")?.takeIf { it != -1 }
             SaleRepFormScreen(
+                saleRepId = saleRepId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -19,10 +19,12 @@ import com.salesrep.app.presentation.components.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaleRepFormScreen(
+    saleRepId: Int? = null,
     onNavigateBack: () -> Unit,
     viewModel: SaleRepViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isEditMode = saleRepId != null
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -33,6 +35,28 @@ fun SaleRepFormScreen(
     var profilePicture by remember { mutableStateOf("") }
     var isActive by remember { mutableStateOf(true) }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isInitialized by remember { mutableStateOf(false) }
+
+    // Load existing sale rep data if editing
+    LaunchedEffect(saleRepId) {
+        if (saleRepId != null) {
+            viewModel.loadSaleRepById(saleRepId)
+        }
+    }
+
+    // Initialize form with existing data
+    LaunchedEffect(uiState.selectedSaleRep) {
+        if (isEditMode && uiState.selectedSaleRep != null && !isInitialized) {
+            val saleRep = uiState.selectedSaleRep!!
+            name = saleRep.name
+            email = saleRep.email
+            phone = saleRep.phone ?: ""
+            region = saleRep.region ?: ""
+            profilePicture = saleRep.profilePicture ?: ""
+            isActive = saleRep.isActive
+            isInitialized = true
+        }
+    }
 
     LaunchedEffect(uiState.successMessage) {
         if (uiState.successMessage != null) {
@@ -43,7 +67,7 @@ fun SaleRepFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Sales Representative") },
+                title = { Text(if (isEditMode) "Edit Sales Representative" else "Add Sales Representative") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Back")
@@ -79,45 +103,48 @@ fun SaleRepFormScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password *") },
-                leadingIcon = { Icon(Icons.Default.Lock, null) },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            if (passwordVisible) Icons.Default.Visibility
-                            else Icons.Default.VisibilityOff,
-                            null
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible)
-                    VisualTransformation.None
-                else
-                    PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password *") },
-                leadingIcon = { Icon(Icons.Default.Lock, null) },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = confirmPassword.isNotEmpty() && password != confirmPassword
-            )
-
-            if (confirmPassword.isNotEmpty() && password != confirmPassword) {
-                Text(
-                    text = "Passwords do not match",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+            // Password fields - optional for edit mode
+            if (!isEditMode || password.isNotEmpty()) {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(if (isEditMode) "New Password (optional)" else "Password *") },
+                    leadingIcon = { Icon(Icons.Default.Lock, null) },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                if (passwordVisible) Icons.Default.Visibility
+                                else Icons.Default.VisibilityOff,
+                                null
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text(if (isEditMode) "Confirm New Password" else "Confirm Password *") },
+                    leadingIcon = { Icon(Icons.Default.Lock, null) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = confirmPassword.isNotEmpty() && password != confirmPassword
+                )
+
+                if (confirmPassword.isNotEmpty() && password != confirmPassword) {
+                    Text(
+                        text = "Passwords do not match",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
             OutlinedTextField(
@@ -164,24 +191,38 @@ fun SaleRepFormScreen(
 
             Button(
                 onClick = {
-                    viewModel.createSaleRep(
-                        name = name,
-                        email = email,
-                        password = password,
-                        passwordConfirmation = confirmPassword,
-                        phone = phone.ifEmpty { null },
-                        region = region.ifEmpty { null },
-                        profilePicture = profilePicture.ifEmpty { null },
-                        isActive = isActive
-                    )
+                    if (isEditMode && saleRepId != null) {
+                        viewModel.updateSaleRep(
+                            id = saleRepId,
+                            name = name,
+                            email = email,
+                            password = password.ifEmpty { null },
+                            passwordConfirmation = confirmPassword.ifEmpty { null },
+                            phone = phone.ifEmpty { null },
+                            region = region.ifEmpty { null },
+                            profilePicture = profilePicture.ifEmpty { null },
+                            isActive = isActive
+                        )
+                    } else {
+                        viewModel.createSaleRep(
+                            name = name,
+                            email = email,
+                            password = password,
+                            passwordConfirmation = confirmPassword,
+                            phone = phone.ifEmpty { null },
+                            region = region.ifEmpty { null },
+                            profilePicture = profilePicture.ifEmpty { null },
+                            isActive = isActive
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 enabled = name.isNotBlank() &&
                         email.isNotBlank() &&
-                        password.isNotBlank() &&
-                        password == confirmPassword &&
+                        (isEditMode || password.isNotBlank()) &&
+                        (password.isEmpty() || password == confirmPassword) &&
                         !uiState.isLoading
             ) {
                 if (uiState.isLoading) {
@@ -190,7 +231,7 @@ fun SaleRepFormScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Create Sales Rep")
+                    Text(if (isEditMode) "Update Sales Rep" else "Create Sales Rep")
                 }
             }
         }

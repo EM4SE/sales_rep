@@ -1,7 +1,8 @@
 package com.salesrep.app.presentation.products
-
+import com.salesrep.app.domain.model.Category
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.salesrep.app.data.repository.CategoryRepository
 import com.salesrep.app.data.repository.ProductRepository
 import com.salesrep.app.domain.model.Product
 import com.salesrep.app.util.Resource
@@ -17,12 +18,14 @@ data class ProductUiState(
     val products: List<Product> = emptyList(),
     val selectedProduct: Product? = null,
     val error: String? = null,
+    val categories: List<Category> = emptyList(),
     val successMessage: String? = null
 )
 
 @HiltViewModel
 class ProductViewModel @Inject constructor(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val categoryRepository: CategoryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductUiState())
@@ -32,6 +35,73 @@ class ProductViewModel @Inject constructor(
         loadProducts()
     }
 
+
+    fun loadCategories() {
+        viewModelScope.launch {
+            categoryRepository.getCategories().collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        _uiState.update { it.copy(categories = result.data ?: emptyList()) }
+                    }
+                    is Resource.Error -> {
+                        // Optionally handle error
+                        _uiState.update { it.copy(error = result.message) }
+                    }
+                    is Resource.Loading -> {
+                        // Loading handled elsewhere
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateProduct(
+        id: Int,
+        name: String,
+        description: String?,
+        price: Double,
+        stock: Int,
+        sku: String?,
+        upc: String?,
+        imageUrl: String?,
+        categoryId: Int
+    ) {
+        viewModelScope.launch {
+            productRepository.updateProduct(
+                id = id,
+                name = name,
+                description = description,
+                price = price,
+                stock = stock,
+                sku = sku,
+                upc = upc,
+                imageUrl = imageUrl,
+                categoryId = categoryId
+            ).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                successMessage = "Product updated successfully"
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.message ?: "Failed to update product"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
     fun loadProducts() {
         viewModelScope.launch {
             productRepository.getProducts().collect { result ->

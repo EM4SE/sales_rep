@@ -68,9 +68,16 @@ sealed class Screen(val route: String) {
     // Categories (Admin only)
     object CategoryList : Screen("categories")
 
+    // Update your Screen sealed class to include:
+
     // Sales Reps (Admin only)
     object SaleRepList : Screen("salereps")
     object SaleRepDetail : Screen("salereps/{saleRepId}") {
         fun createRoute(saleRepId: Int) = "salereps/$saleRepId"
+    }
+    object SaleRepForm : Screen("salereps/form?saleRepId={saleRepId}") {
+        fun createRoute(saleRepId: Int? = null) =
+            if (saleRepId != null) "salereps/form?saleRepId=$saleRepId"
+            else "salereps/form"
     }
 }

@@ -46,12 +46,18 @@ fun ProductFormScreen(
     var upc by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var imageUrl by remember { mutableStateOf("") }
-    var categoryId by remember { mutableStateOf("1") }
+    var selectedCategory by remember { mutableStateOf<com.salesrep.app.domain.model.Category?>(null) }
+    var expandedCategoryDropdown by remember { mutableStateOf(false) }
     var showScannerDialog by remember { mutableStateOf(false) }
     var scannerType by remember { mutableStateOf("") } // "sku" or "upc"
     var showImageOptions by remember { mutableStateOf(false) }
 
     val isEditMode = productId != null
+
+    // Load categories on screen start
+    LaunchedEffect(Unit) {
+        viewModel.loadCategories()
+    }
 
     // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -101,7 +107,8 @@ fun ProductFormScreen(
             sku = product.sku ?: ""
             upc = product.upc ?: ""
             imageUrl = product.imageUrl ?: ""
-            categoryId = product.categoryId.toString()
+            // Find and set the selected category
+            selectedCategory = uiState.categories.find { it.id == product.categoryId }
         }
     }
 
@@ -327,22 +334,78 @@ fun ProductFormScreen(
                 singleLine = true
             )
 
-            OutlinedTextField(
-                value = categoryId,
-                onValueChange = { categoryId = it },
-                label = { Text("Category ID *") },
-                leadingIcon = { Icon(Icons.Default.Category, null) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
+            // Category Dropdown
+            ExposedDropdownMenuBox(
+                expanded = expandedCategoryDropdown,
+                onExpandedChange = { expandedCategoryDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory?.name ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category *") },
+                    leadingIcon = { Icon(Icons.Default.Category, null) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryDropdown) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expandedCategoryDropdown,
+                    onDismissRequest = { expandedCategoryDropdown = false }
+                ) {
+                    if (uiState.categories.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("No categories available") },
+                            onClick = { },
+                            enabled = false
+                        )
+                    } else {
+                        uiState.categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = category.name,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        category.description?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    selectedCategory = category
+                                    expandedCategoryDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {
                     if (isEditMode) {
-                        // Update logic would go here
+                        viewModel.updateProduct(
+                            id = productId!!,
+                            name = name,
+                            description = description.ifEmpty { null },
+                            price = price.toDoubleOrNull() ?: 0.0,
+                            stock = stock.toIntOrNull() ?: 0,
+                            sku = sku.ifEmpty { null },
+                            upc = upc.ifEmpty { null },
+                            imageUrl = imageUrl.ifEmpty { null },
+                            categoryId = selectedCategory?.id ?: 1
+                        )
                     } else {
                         viewModel.createProduct(
                             name = name,
@@ -352,7 +415,7 @@ fun ProductFormScreen(
                             sku = sku.ifEmpty { null },
                             upc = upc.ifEmpty { null },
                             imageUrl = imageUrl.ifEmpty { null },
-                            categoryId = categoryId.toIntOrNull() ?: 1
+                            categoryId = selectedCategory?.id ?: 1
                         )
                     }
                 },
@@ -362,6 +425,7 @@ fun ProductFormScreen(
                 enabled = name.isNotBlank() &&
                         price.isNotBlank() &&
                         stock.isNotBlank() &&
+                        selectedCategory != null &&
                         !uiState.isLoading
             ) {
                 if (uiState.isLoading) {

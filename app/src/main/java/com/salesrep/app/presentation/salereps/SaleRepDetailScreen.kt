@@ -21,6 +21,7 @@ import com.salesrep.app.presentation.customers.DetailRow
 fun SaleRepDetailScreen(
     saleRepId: Int,
     onNavigateBack: () -> Unit,
+    onNavigateToEdit: ((Int) -> Unit)? = null,
     viewModel: SaleRepViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -40,6 +41,11 @@ fun SaleRepDetailScreen(
                     }
                 },
                 actions = {
+                    if (onNavigateToEdit != null) {
+                        IconButton(onClick = { onNavigateToEdit(saleRepId) }) {
+                            Icon(Icons.Default.Edit, "Edit")
+                        }
+                    }
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(Icons.Default.Delete, "Delete")
                     }
