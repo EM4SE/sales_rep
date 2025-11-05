@@ -13,6 +13,14 @@ data class Visit(
     val status: String,
     val createdAt: String,
     val updatedAt: String,
+    // Customer details
     val customerName: String? = null,
-    val customerAddress: String? = null
+    val customerAddress: String? = null,
+    val customerPhone: String? = null,
+    val customerEmail: String? = null,
+    val customerCity: String? = null,
+    // Sales Rep details
+    val saleRepName: String? = null,
+    val saleRepEmail: String? = null,
+    val saleRepPhone: String? = null
 )

@@ -23,22 +23,78 @@ fun CustomerListScreen(
     viewModel: CustomerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
+
+    // Filter customers based on search query
+    val filteredCustomers = remember(uiState.customers, searchQuery) {
+        if (searchQuery.isBlank()) {
+            uiState.customers
+        } else {
+            uiState.customers.filter { customer ->
+                customer.name.contains(searchQuery, ignoreCase = true) ||
+                        customer.email.contains(searchQuery, ignoreCase = true) ||
+                        customer.phone?.contains(searchQuery, ignoreCase = true) == true ||
+                        customer.city?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Customers") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+            if (isSearchActive) {
+                // Search Bar Mode
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search customers...") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }) {
+                            Icon(Icons.Default.ArrowBack, "Close Search")
+                        }
+                    },
+                    actions = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, "Clear Search")
+                            }
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadCustomers() }) {
-                        Icon(Icons.Default.Refresh, "Refresh")
+                )
+            } else {
+                // Normal Mode
+                TopAppBar(
+                    title = { Text("Customers") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, "Search")
+                        }
+                        IconButton(onClick = { viewModel.loadCustomers() }) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAdd) {
@@ -63,13 +119,28 @@ fun CustomerListScreen(
                 uiState.customers.isEmpty() -> {
                     EmptyState("No customers found.\nTap + to add a customer.")
                 }
+                filteredCustomers.isEmpty() && searchQuery.isNotEmpty() -> {
+                    EmptyState("No customers match \"$searchQuery\"")
+                }
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.customers) { customer ->
+                        // Show search result count
+                        if (searchQuery.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "${filteredCustomers.size} result${if (filteredCustomers.size != 1) "s" else ""}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                        }
+
+                        items(filteredCustomers) { customer ->
                             CustomerCard(
                                 customer = customer,
                                 onClick = { onNavigateToDetail(customer.id) }

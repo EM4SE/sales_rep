@@ -2,7 +2,9 @@ package com.salesrep.app.presentation.visits
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.salesrep.app.data.repository.CustomerRepository
 import com.salesrep.app.data.repository.VisitRepository
+import com.salesrep.app.domain.model.Customer
 import com.salesrep.app.domain.model.Visit
 import com.salesrep.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,13 +18,15 @@ data class VisitUiState(
     val isLoading: Boolean = false,
     val visits: List<Visit> = emptyList(),
     val selectedVisit: Visit? = null,
+    val customers: List<Customer> = emptyList(),
     val error: String? = null,
     val successMessage: String? = null
 )
 
 @HiltViewModel
 class VisitViewModel @Inject constructor(
-    private val visitRepository: VisitRepository
+    private val visitRepository: VisitRepository,
+    private val customerRepository: CustomerRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VisitUiState())
@@ -30,6 +34,7 @@ class VisitViewModel @Inject constructor(
 
     init {
         loadVisits()
+        loadCustomers()
     }
 
     fun loadVisits() {
@@ -55,6 +60,23 @@ class VisitViewModel @Inject constructor(
                                 error = result.message
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    fun loadCustomers() {
+        viewModelScope.launch {
+            customerRepository.getCustomers().collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(customers = result.data ?: emptyList())
+                        }
+                    }
+                    else -> {
+                        // Silently handle errors for customer loading
                     }
                 }
             }

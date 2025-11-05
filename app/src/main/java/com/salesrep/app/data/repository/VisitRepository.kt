@@ -1,5 +1,7 @@
 package com.salesrep.app.data.repository
 
+import com.salesrep.app.data.local.dao.CustomerDao
+import com.salesrep.app.data.local.dao.SaleRepDao
 import com.salesrep.app.data.local.dao.SyncQueueDao
 import com.salesrep.app.data.local.dao.VisitDao
 import com.salesrep.app.data.local.entities.SyncQueueEntity
@@ -23,6 +25,8 @@ import javax.inject.Singleton
 class VisitRepository @Inject constructor(
     private val apiService: ApiService,
     private val visitDao: VisitDao,
+    private val customerDao: CustomerDao,
+    private val saleRepDao: SaleRepDao,
     private val syncQueueDao: SyncQueueDao,
     private val networkUtils: NetworkUtils,
     private val preferencesManager: PreferencesManager,
@@ -39,7 +43,18 @@ class VisitRepository @Inject constructor(
         } else {
             visitDao.getAllVisits().first()
         }
-        emit(Resource.Success(localVisits.map { it.toDomain() }))
+
+        // Enrich visits with customer and sales rep info
+        val enrichedVisits = localVisits.map { visitEntity ->
+            val customer = customerDao.getCustomerById(visitEntity.customerId).first()
+            val saleRep = saleRepDao.getSaleRepById(visitEntity.saleRepId).first()
+            visitEntity.toDomain().copy(
+                customerName = customer?.name,
+                customerAddress = customer?.address,
+                saleRepName = saleRep?.name
+            )
+        }
+        emit(Resource.Success(enrichedVisits))
 
         if (networkUtils.isNetworkAvailable()) {
             try {
@@ -53,7 +68,17 @@ class VisitRepository @Inject constructor(
                         } else {
                             visitDao.getAllVisits().first()
                         }
-                        emit(Resource.Success(updatedVisits.map { it.toDomain() }))
+
+                        val updatedEnrichedVisits = updatedVisits.map { visitEntity ->
+                            val customer = customerDao.getCustomerById(visitEntity.customerId).first()
+                            val saleRep = saleRepDao.getSaleRepById(visitEntity.saleRepId).first()
+                            visitEntity.toDomain().copy(
+                                customerName = customer?.name,
+                                customerAddress = customer?.address,
+                                saleRepName = saleRep?.name
+                            )
+                        }
+                        emit(Resource.Success(updatedEnrichedVisits))
                     }
                 }
             } catch (e: Exception) {
@@ -66,8 +91,19 @@ class VisitRepository @Inject constructor(
         emit(Resource.Loading())
 
         val localVisit = visitDao.getVisitById(id).first()
-        localVisit?.let {
-            emit(Resource.Success(it.toDomain()))
+        localVisit?.let { visitEntity ->
+            val customer = customerDao.getCustomerById(visitEntity.customerId).first()
+            val saleRep = saleRepDao.getSaleRepById(visitEntity.saleRepId).first()
+            val enrichedVisit = visitEntity.toDomain().copy(
+                customerName = customer?.name,
+                customerAddress = customer?.address,
+                customerPhone = customer?.phone,
+                customerEmail = customer?.email,
+                saleRepName = saleRep?.name,
+                saleRepEmail = saleRep?.email,
+                saleRepPhone = saleRep?.phone
+            )
+            emit(Resource.Success(enrichedVisit))
         }
 
         if (networkUtils.isNetworkAvailable()) {
@@ -76,7 +112,22 @@ class VisitRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.visit?.let { visitDto ->
                         visitDao.insertVisit(visitDto.toEntity())
-                        emit(Resource.Success(visitDto.toEntity().toDomain()))
+
+                        val visitEntity = visitDao.getVisitById(id).first()
+                        visitEntity?.let {
+                            val customer = customerDao.getCustomerById(it.customerId).first()
+                            val saleRep = saleRepDao.getSaleRepById(it.saleRepId).first()
+                            val enrichedVisit = it.toDomain().copy(
+                                customerName = customer?.name,
+                                customerAddress = customer?.address,
+                                customerPhone = customer?.phone,
+                                customerEmail = customer?.email,
+                                saleRepName = saleRep?.name,
+                                saleRepEmail = saleRep?.email,
+                                saleRepPhone = saleRep?.phone
+                            )
+                            emit(Resource.Success(enrichedVisit))
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -90,7 +141,16 @@ class VisitRepository @Inject constructor(
     fun getVisitsByDate(date: String, saleRepId: Int): Flow<Resource<List<Visit>>> = flow {
         emit(Resource.Loading())
         val visits = visitDao.getVisitsByDate(date, saleRepId).first()
-        emit(Resource.Success(visits.map { it.toDomain() }))
+        val enrichedVisits = visits.map { visitEntity ->
+            val customer = customerDao.getCustomerById(visitEntity.customerId).first()
+            val saleRep = saleRepDao.getSaleRepById(visitEntity.saleRepId).first()
+            visitEntity.toDomain().copy(
+                customerName = customer?.name,
+                customerAddress = customer?.address,
+                saleRepName = saleRep?.name
+            )
+        }
+        emit(Resource.Success(enrichedVisits))
     }
 
     suspend fun createVisit(
@@ -115,7 +175,18 @@ class VisitRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.visit?.let { visitDto ->
                         visitDao.insertVisit(visitDto.toEntity())
-                        emit(Resource.Success(visitDto.toEntity().toDomain()))
+
+                        val visitEntity = visitDao.getVisitById(visitDto.id).first()
+                        visitEntity?.let {
+                            val customer = customerDao.getCustomerById(it.customerId).first()
+                            val saleRep = saleRepDao.getSaleRepById(it.saleRepId).first()
+                            val enrichedVisit = it.toDomain().copy(
+                                customerName = customer?.name,
+                                customerAddress = customer?.address,
+                                saleRepName = saleRep?.name
+                            )
+                            emit(Resource.Success(enrichedVisit))
+                        }
                     }
                 } else {
                     emit(Resource.Error(response.message() ?: "Failed to create visit"))
@@ -159,7 +230,18 @@ class VisitRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.visit?.let { visitDto ->
                         visitDao.insertVisit(visitDto.toEntity())
-                        emit(Resource.Success(visitDto.toEntity().toDomain()))
+
+                        val visitEntity = visitDao.getVisitById(visitDto.id).first()
+                        visitEntity?.let {
+                            val customer = customerDao.getCustomerById(it.customerId).first()
+                            val saleRep = saleRepDao.getSaleRepById(it.saleRepId).first()
+                            val enrichedVisit = it.toDomain().copy(
+                                customerName = customer?.name,
+                                customerAddress = customer?.address,
+                                saleRepName = saleRep?.name
+                            )
+                            emit(Resource.Success(enrichedVisit))
+                        }
                     }
                 } else {
                     emit(Resource.Error(response.message() ?: "Failed to update visit"))

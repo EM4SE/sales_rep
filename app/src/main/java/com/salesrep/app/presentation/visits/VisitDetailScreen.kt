@@ -103,16 +103,36 @@ fun VisitDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    text = "Customer",
+                                    text = "Customer Information",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+
                                 DetailRow(
                                     icon = Icons.Default.Person,
                                     label = "Name",
                                     value = visit.customerName ?: "Customer #${visit.customerId}"
                                 )
+
+                                visit.customerEmail?.let {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    DetailRow(
+                                        icon = Icons.Default.Email,
+                                        label = "Email",
+                                        value = it
+                                    )
+                                }
+
+                                visit.customerPhone?.let {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    DetailRow(
+                                        icon = Icons.Default.Phone,
+                                        label = "Phone",
+                                        value = it
+                                    )
+                                }
+
                                 visit.customerAddress?.let {
                                     Divider(modifier = Modifier.padding(vertical = 8.dp))
                                     DetailRow(
@@ -120,6 +140,47 @@ fun VisitDetailScreen(
                                         label = "Address",
                                         value = it
                                     )
+                                }
+                            }
+                        }
+
+                        // Sales Rep Info Card
+                        visit.saleRepName?.let { saleRepName ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = "Sales Representative",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    DetailRow(
+                                        icon = Icons.Default.Badge,
+                                        label = "Name",
+                                        value = saleRepName
+                                    )
+
+                                    visit.saleRepEmail?.let {
+                                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                        DetailRow(
+                                            icon = Icons.Default.Email,
+                                            label = "Email",
+                                            value = it
+                                        )
+                                    }
+
+                                    visit.saleRepPhone?.let {
+                                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                        DetailRow(
+                                            icon = Icons.Default.Phone,
+                                            label = "Phone",
+                                            value = it
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -135,7 +196,7 @@ fun VisitDetailScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                                 DetailRow(
                                     icon = Icons.Default.CalendarToday,
                                     label = "Date",
@@ -186,9 +247,10 @@ fun VisitDetailScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Lat: ${visit.locationLat}\nLng: ${visit.locationLng}",
-                                        style = MaterialTheme.typography.bodyMedium
+                                    DetailRow(
+                                        icon = Icons.Default.LocationOn,
+                                        label = "Coordinates",
+                                        value = "Lat: ${visit.locationLat}, Lng: ${visit.locationLng}"
                                     )
                                 }
                             }

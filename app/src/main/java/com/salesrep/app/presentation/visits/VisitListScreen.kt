@@ -100,6 +100,7 @@ fun VisitCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Header with customer name and status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -120,8 +121,9 @@ fun VisitCard(
                 StatusChip(status = visit.status)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // Date and Time row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -133,7 +135,8 @@ fun VisitCard(
                     Icon(
                         Icons.Default.CalendarToday,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = visit.visitDate,
@@ -148,7 +151,8 @@ fun VisitCard(
                     Icon(
                         Icons.Default.AccessTime,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = visit.visitTime,
@@ -157,8 +161,56 @@ fun VisitCard(
                 }
             }
 
+            // Customer address
+            visit.customerAddress?.let { address ->
+                if (address.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Text(
+                            text = address,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            // Sales Rep info
+            visit.saleRepName?.let { saleRepName ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Badge,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    Text(
+                        text = "Rep: $saleRepName",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Notes
             visit.notes?.let { notes ->
                 if (notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Divider()
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = notes,

@@ -3,7 +3,11 @@ package com.salesrep.app.presentation.customers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.salesrep.app.data.repository.CustomerRepository
+import com.salesrep.app.data.repository.OrderRepository
+import com.salesrep.app.data.repository.VisitRepository
 import com.salesrep.app.domain.model.Customer
+import com.salesrep.app.domain.model.Order
+import com.salesrep.app.domain.model.Visit
 import com.salesrep.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,13 +20,17 @@ data class CustomerUiState(
     val isLoading: Boolean = false,
     val customers: List<Customer> = emptyList(),
     val selectedCustomer: Customer? = null,
+    val customerOrders: List<Order> = emptyList(),
+    val customerVisits: List<Visit> = emptyList(),
     val error: String? = null,
     val successMessage: String? = null
 )
 
 @HiltViewModel
 class CustomerViewModel @Inject constructor(
-    private val customerRepository: CustomerRepository
+    private val customerRepository: CustomerRepository,
+    private val orderRepository: OrderRepository,
+    private val visitRepository: VisitRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomerUiState())
@@ -63,6 +71,7 @@ class CustomerViewModel @Inject constructor(
 
     fun loadCustomerById(id: Int) {
         viewModelScope.launch {
+            // Load customer details
             customerRepository.getCustomerById(id).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
@@ -84,6 +93,44 @@ class CustomerViewModel @Inject constructor(
                             )
                         }
                     }
+                }
+            }
+
+            // Load customer orders
+            loadCustomerOrders(id)
+
+            // Load customer visits
+            loadCustomerVisits(id)
+        }
+    }
+
+    private fun loadCustomerOrders(customerId: Int) {
+        viewModelScope.launch {
+            orderRepository.getOrders().collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        val customerOrders = result.data?.filter { it.customerId == customerId } ?: emptyList()
+                        _uiState.update {
+                            it.copy(customerOrders = customerOrders)
+                        }
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private fun loadCustomerVisits(customerId: Int) {
+        viewModelScope.launch {
+            visitRepository.getVisits().collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        val customerVisits = result.data?.filter { it.customerId == customerId } ?: emptyList()
+                        _uiState.update {
+                            it.copy(customerVisits = customerVisits)
+                        }
+                    }
+                    else -> {}
                 }
             }
         }

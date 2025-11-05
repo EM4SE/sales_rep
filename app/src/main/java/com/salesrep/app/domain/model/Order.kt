@@ -12,8 +12,18 @@ data class Order(
     val deliveredAt: String?,
     val createdAt: String,
     val updatedAt: String,
+    // Customer details
     val customerName: String? = null,
+    val customerEmail: String? = null,
+    val customerPhone: String? = null,
+    val customerAddress: String? = null,
+    val customerCity: String? = null,
+    // Sales rep details
     val saleRepName: String? = null,
+    val saleRepEmail: String? = null,
+    val saleRepPhone: String? = null,
+    val saleRepRegion: String? = null,
+    // Order items
     val items: List<OrderItem> = emptyList()
 )
 
@@ -26,5 +36,6 @@ data class OrderItem(
     val discount: Double?,
     val taxAmount: Double?,
     val productName: String? = null,
-    val productImage: String? = null
+    val productImage: String? = null,
+    val productDescription: String? = null
 )
