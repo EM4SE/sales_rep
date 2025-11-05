@@ -25,22 +25,81 @@ fun VisitListScreen(
     viewModel: VisitViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
+
+    // Filter visits based on search query
+    val filteredVisits = remember(uiState.visits, searchQuery) {
+        if (searchQuery.isBlank()) {
+            uiState.visits
+        } else {
+            uiState.visits.filter { visit ->
+                visit.customerName?.contains(searchQuery, ignoreCase = true) == true ||
+                        visit.visitType.contains(searchQuery, ignoreCase = true) ||
+                        visit.status.contains(searchQuery, ignoreCase = true) ||
+                        visit.visitDate.contains(searchQuery, ignoreCase = true) ||
+                        visit.customerAddress?.contains(searchQuery, ignoreCase = true) == true ||
+                        visit.saleRepName?.contains(searchQuery, ignoreCase = true) == true ||
+                        visit.notes?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Visits") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+            if (isSearchActive) {
+                // Search Bar Mode
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search visits...") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }) {
+                            Icon(Icons.Default.ArrowBack, "Close Search")
+                        }
+                    },
+                    actions = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, "Clear Search")
+                            }
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadVisits() }) {
-                        Icon(Icons.Default.Refresh, "Refresh")
+                )
+            } else {
+                // Normal Mode
+                TopAppBar(
+                    title = { Text("Visits") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, "Search")
+                        }
+                        IconButton(onClick = { viewModel.loadVisits() }) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAdd) {
@@ -65,13 +124,28 @@ fun VisitListScreen(
                 uiState.visits.isEmpty() -> {
                     EmptyState("No visits found.\nTap + to schedule a visit.")
                 }
+                filteredVisits.isEmpty() && searchQuery.isNotEmpty() -> {
+                    EmptyState("No visits match \"$searchQuery\"")
+                }
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.visits) { visit ->
+                        // Show search result count
+                        if (searchQuery.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "${filteredVisits.size} result${if (filteredVisits.size != 1) "s" else ""}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                        }
+
+                        items(filteredVisits) { visit ->
                             VisitCard(
                                 visit = visit,
                                 onClick = { onNavigateToDetail(visit.id) }

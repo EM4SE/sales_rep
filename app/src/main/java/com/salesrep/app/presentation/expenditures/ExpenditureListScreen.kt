@@ -27,26 +27,82 @@ fun ExpenditureListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale.US) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
 
-    val totalAmount = remember(uiState.expenditures) {
-        uiState.expenditures.sumOf { it.amount }
+    // Filter expenditures based on search query
+    val filteredExpenditures = remember(uiState.expenditures, searchQuery) {
+        if (searchQuery.isBlank()) {
+            uiState.expenditures
+        } else {
+            uiState.expenditures.filter { expenditure ->
+                expenditure.title.contains(searchQuery, ignoreCase = true) ||
+                        expenditure.description?.contains(searchQuery, ignoreCase = true) == true ||
+                        expenditure.date.contains(searchQuery, ignoreCase = true) ||
+                        currencyFormat.format(expenditure.amount).contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    val totalAmount = remember(filteredExpenditures) {
+        filteredExpenditures.sumOf { it.amount }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Expenditures") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+            if (isSearchActive) {
+                // Search Bar Mode
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search expenses...") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }) {
+                            Icon(Icons.Default.ArrowBack, "Close Search")
+                        }
+                    },
+                    actions = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, "Clear Search")
+                            }
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadExpenditures() }) {
-                        Icon(Icons.Default.Refresh, "Refresh")
+                )
+            } else {
+                // Normal Mode
+                TopAppBar(
+                    title = { Text("Expenditures") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, "Search")
+                        }
+                        IconButton(onClick = { viewModel.loadExpenditures() }) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAdd) {
@@ -60,7 +116,7 @@ fun ExpenditureListScreen(
                 .padding(padding)
         ) {
             // Total Card
-            if (uiState.expenditures.isNotEmpty()) {
+            if (filteredExpenditures.isNotEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -79,11 +135,11 @@ fun ExpenditureListScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Total Expenses",
+                                text = if (searchQuery.isNotEmpty()) "Filtered Total" else "Total Expenses",
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "${uiState.expenditures.size} items",
+                                text = "${filteredExpenditures.size} item${if (filteredExpenditures.size != 1) "s" else ""}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -111,13 +167,28 @@ fun ExpenditureListScreen(
                     uiState.expenditures.isEmpty() -> {
                         EmptyState("No expenses found.\nTap + to add an expense.")
                     }
+                    filteredExpenditures.isEmpty() && searchQuery.isNotEmpty() -> {
+                        EmptyState("No expenses match \"$searchQuery\"")
+                    }
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(uiState.expenditures) { expenditure ->
+                            // Show search result count
+                            if (searchQuery.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "${filteredExpenditures.size} result${if (filteredExpenditures.size != 1) "s" else ""}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    )
+                                }
+                            }
+
+                            items(filteredExpenditures) { expenditure ->
                                 ExpenditureCard(
                                     expenditure = expenditure,
                                     onClick = { onNavigateToDetail(expenditure.id) }

@@ -26,6 +26,7 @@ fun SaleRepListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
 
     // Filter sale reps based on search query
     val filteredSaleReps = remember(uiState.saleReps, searchQuery) {
@@ -42,19 +43,59 @@ fun SaleRepListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Sales Representatives") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+            if (isSearchActive) {
+                // Search Bar Mode
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search sales reps...") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }) {
+                            Icon(Icons.Default.ArrowBack, "Close Search")
+                        }
+                    },
+                    actions = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, "Clear Search")
+                            }
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadSaleReps() }) {
-                        Icon(Icons.Default.Refresh, "Refresh")
+                )
+            } else {
+                // Normal Mode
+                TopAppBar(
+                    title = { Text("Sales Representatives") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, "Search")
+                        }
+                        IconButton(onClick = { viewModel.loadSaleReps() }) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAdd) {
@@ -62,67 +103,49 @@ fun SaleRepListScreen(
             }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search by name, email or region...") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear")
-                        }
+            when {
+                uiState.isLoading && uiState.saleReps.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
-                },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
-            )
-
-            // Content
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    uiState.isLoading && uiState.saleReps.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    filteredSaleReps.isEmpty() -> {
-                        EmptyState(
-                            if (searchQuery.isNotEmpty())
-                                "No sales reps found matching \"$searchQuery\""
-                            else
-                                "No sales reps found.\nTap + to add a sales rep."
-                        )
-                    }
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(filteredSaleReps, key = { it.id }) { saleRep ->
-                                SaleRepCard(
-                                    saleRep = saleRep,
-                                    onClick = { onNavigateToDetail(saleRep.id) }
+                }
+                uiState.saleReps.isEmpty() -> {
+                    EmptyState("No sales reps found.\nTap + to add a sales rep.")
+                }
+                filteredSaleReps.isEmpty() && searchQuery.isNotEmpty() -> {
+                    EmptyState("No sales reps match \"$searchQuery\"")
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Show search result count
+                        if (searchQuery.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "${filteredSaleReps.size} result${if (filteredSaleReps.size != 1) "s" else ""}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 8.dp)
                                 )
                             }
+                        }
+
+                        items(filteredSaleReps, key = { it.id }) { saleRep ->
+                            SaleRepCard(
+                                saleRep = saleRep,
+                                onClick = { onNavigateToDetail(saleRep.id) }
+                            )
                         }
                     }
                 }
