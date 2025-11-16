@@ -153,6 +153,47 @@ fun ExpenditureDetailScreen(
                             }
                         }
 
+                        // Sales Rep Info Card
+                        expenditure.saleRepName?.let { saleRepName ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = "Sales Representative",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    DetailRow(
+                                        icon = Icons.Default.Badge,
+                                        label = "Name",
+                                        value = saleRepName
+                                    )
+
+                                    expenditure.saleRepEmail?.let {
+                                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                        DetailRow(
+                                            icon = Icons.Default.Email,
+                                            label = "Email",
+                                            value = it
+                                        )
+                                    }
+
+                                    expenditure.saleRepPhone?.let {
+                                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                        DetailRow(
+                                            icon = Icons.Default.Phone,
+                                            label = "Phone",
+                                            value = it
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         // Receipt Card
                         if (expenditure.receiptImage != null) {
                             Card(

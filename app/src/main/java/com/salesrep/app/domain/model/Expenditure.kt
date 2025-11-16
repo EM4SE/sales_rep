@@ -10,5 +10,7 @@ data class Expenditure(
     val receiptImage: String?,
     val createdAt: String,
     val updatedAt: String,
-    val saleRepName: String? = null
+    val saleRepName: String? = null,
+    val saleRepEmail: String? = null,
+    val saleRepPhone: String? = null
 )

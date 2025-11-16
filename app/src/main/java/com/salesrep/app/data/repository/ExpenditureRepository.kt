@@ -1,6 +1,7 @@
 package com.salesrep.app.data.repository
 
 import com.salesrep.app.data.local.dao.ExpenditureDao
+import com.salesrep.app.data.local.dao.SaleRepDao
 import com.salesrep.app.data.local.dao.SyncQueueDao
 import com.salesrep.app.data.local.entities.SyncQueueEntity
 import com.salesrep.app.data.mapper.toDomain
@@ -23,6 +24,7 @@ import javax.inject.Singleton
 class ExpenditureRepository @Inject constructor(
     private val apiService: ApiService,
     private val expenditureDao: ExpenditureDao,
+    private val saleRepDao: SaleRepDao,
     private val syncQueueDao: SyncQueueDao,
     private val networkUtils: NetworkUtils,
     private val preferencesManager: PreferencesManager,
@@ -39,7 +41,17 @@ class ExpenditureRepository @Inject constructor(
         } else {
             expenditureDao.getAllExpenditures().first()
         }
-        emit(Resource.Success(localExpenditures.map { it.toDomain() }))
+
+        // Enrich expenditures with sales rep info
+        val enrichedExpenditures = localExpenditures.map { expenditureEntity ->
+            val saleRep = saleRepDao.getSaleRepById(expenditureEntity.saleRepId).first()
+            expenditureEntity.toDomain().copy(
+                saleRepName = saleRep?.name,
+                saleRepEmail = saleRep?.email,
+                saleRepPhone = saleRep?.phone
+            )
+        }
+        emit(Resource.Success(enrichedExpenditures))
 
         if (networkUtils.isNetworkAvailable()) {
             try {
@@ -53,7 +65,16 @@ class ExpenditureRepository @Inject constructor(
                         } else {
                             expenditureDao.getAllExpenditures().first()
                         }
-                        emit(Resource.Success(updatedExpenditures.map { it.toDomain() }))
+
+                        val updatedEnrichedExpenditures = updatedExpenditures.map { expenditureEntity ->
+                            val saleRep = saleRepDao.getSaleRepById(expenditureEntity.saleRepId).first()
+                            expenditureEntity.toDomain().copy(
+                                saleRepName = saleRep?.name,
+                                saleRepEmail = saleRep?.email,
+                                saleRepPhone = saleRep?.phone
+                            )
+                        }
+                        emit(Resource.Success(updatedEnrichedExpenditures))
                     }
                 }
             } catch (e: Exception) {
@@ -66,8 +87,14 @@ class ExpenditureRepository @Inject constructor(
         emit(Resource.Loading())
 
         val localExpenditure = expenditureDao.getExpenditureById(id).first()
-        localExpenditure?.let {
-            emit(Resource.Success(it.toDomain()))
+        localExpenditure?.let { expenditureEntity ->
+            val saleRep = saleRepDao.getSaleRepById(expenditureEntity.saleRepId).first()
+            val enrichedExpenditure = expenditureEntity.toDomain().copy(
+                saleRepName = saleRep?.name,
+                saleRepEmail = saleRep?.email,
+                saleRepPhone = saleRep?.phone
+            )
+            emit(Resource.Success(enrichedExpenditure))
         }
 
         if (networkUtils.isNetworkAvailable()) {
@@ -76,7 +103,17 @@ class ExpenditureRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.expenditure?.let { expenditureDto ->
                         expenditureDao.insertExpenditure(expenditureDto.toEntity())
-                        emit(Resource.Success(expenditureDto.toEntity().toDomain()))
+
+                        val expenditureEntity = expenditureDao.getExpenditureById(id).first()
+                        expenditureEntity?.let {
+                            val saleRep = saleRepDao.getSaleRepById(it.saleRepId).first()
+                            val enrichedExpenditure = it.toDomain().copy(
+                                saleRepName = saleRep?.name,
+                                saleRepEmail = saleRep?.email,
+                                saleRepPhone = saleRep?.phone
+                            )
+                            emit(Resource.Success(enrichedExpenditure))
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -104,7 +141,17 @@ class ExpenditureRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.expenditure?.let { expenditureDto ->
                         expenditureDao.insertExpenditure(expenditureDto.toEntity())
-                        emit(Resource.Success(expenditureDto.toEntity().toDomain()))
+
+                        val expenditureEntity = expenditureDao.getExpenditureById(expenditureDto.id).first()
+                        expenditureEntity?.let {
+                            val saleRep = saleRepDao.getSaleRepById(it.saleRepId).first()
+                            val enrichedExpenditure = it.toDomain().copy(
+                                saleRepName = saleRep?.name,
+                                saleRepEmail = saleRep?.email,
+                                saleRepPhone = saleRep?.phone
+                            )
+                            emit(Resource.Success(enrichedExpenditure))
+                        }
                     }
                 } else {
                     emit(Resource.Error(response.message() ?: "Failed to create expenditure"))
@@ -143,7 +190,17 @@ class ExpenditureRepository @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.expenditure?.let { expenditureDto ->
                         expenditureDao.insertExpenditure(expenditureDto.toEntity())
-                        emit(Resource.Success(expenditureDto.toEntity().toDomain()))
+
+                        val expenditureEntity = expenditureDao.getExpenditureById(expenditureDto.id).first()
+                        expenditureEntity?.let {
+                            val saleRep = saleRepDao.getSaleRepById(it.saleRepId).first()
+                            val enrichedExpenditure = it.toDomain().copy(
+                                saleRepName = saleRep?.name,
+                                saleRepEmail = saleRep?.email,
+                                saleRepPhone = saleRep?.phone
+                            )
+                            emit(Resource.Success(enrichedExpenditure))
+                        }
                     }
                 } else {
                     emit(Resource.Error(response.message() ?: "Failed to update expenditure"))
